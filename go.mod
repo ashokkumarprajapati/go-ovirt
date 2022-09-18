@@ -1,4 +1,4 @@
-module github.com/ovirt/go-ovirt
+module github.com/ashokkumarprajapati/go-ovirt
 
 go 1.15
 
