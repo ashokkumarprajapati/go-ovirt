@@ -63118,6 +63118,127 @@ func NewSnapshotsService(connection *Connection, path string) *SnapshotsService 
 }
 
 //
+// Remove the Snapshot of the VM.
+// [source]
+// ----
+// #!/bin/sh -ex
+// url="https://engine.example.com/ovirt-engine/api"
+// user="admin@internal"
+// password="..."
+// curl \
+// --verbose \
+// --cacert /etc/pki/ovirt-engine/ca.pem \
+// --user "${user}:${password}" \
+// --request DELETE \
+// --header "Version: 4" \
+// "${url}/hosts/1ff7a191-2f3b-4eff-812b-9f91a30c3acc"
+// ----
+//
+type SnapshotsServiceRemoveRequest struct {
+	SnapshotsService *SnapshotsService
+	header           map[string]string
+	query            map[string]string
+	id               string
+}
+
+func (p *SnapshotsServiceRemoveRequest) Header(key, value string) *SnapshotsServiceRemoveRequest {
+	if p.header == nil {
+		p.header = make(map[string]string)
+	}
+	p.header[key] = value
+	return p
+}
+
+func (p *SnapshotsServiceRemoveRequest) Query(key, value string) *SnapshotsServiceRemoveRequest {
+	if p.query == nil {
+		p.query = make(map[string]string)
+	}
+	p.query[key] = value
+	return p
+}
+
+func (p *SnapshotsServiceRemoveRequest) Send() (*SnapshotsServiceRemoveResponse, error) {
+	rawURL := fmt.Sprintf("%s%s", p.SnapshotsService.connection.URL(), p.SnapshotsService.path)
+	values := make(url.Values)
+
+	if p.query != nil {
+		for k, v := range p.query {
+			values[k] = []string{v}
+		}
+	}
+	if len(values) > 0 {
+		rawURL = fmt.Sprintf("%s?%s", rawURL, values.Encode())
+	}
+	req, err := http.NewRequest("DELETE", rawURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	for hk, hv := range p.SnapshotsService.connection.headers {
+		req.Header.Add(hk, hv)
+	}
+
+	if p.header != nil {
+		for hk, hv := range p.header {
+			req.Header.Add(hk, hv)
+		}
+	}
+
+	req.Header.Add("User-Agent", fmt.Sprintf("GoSDK/%s", SDK_VERSION))
+	req.Header.Add("Version", "4")
+	req.Header.Add("Content-Type", "application/xml")
+	req.Header.Add("Accept", "application/xml")
+	// get OAuth access token
+	token, err := p.SnapshotsService.connection.authenticate()
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+	// Send the request and wait for the response
+	resp, err := p.SnapshotsService.connection.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if p.SnapshotsService.connection.logFunc == nil {
+		dumpReq, err := httputil.DumpRequestOut(req, true)
+		if err != nil {
+			return nil, err
+		}
+		dumpResp, err := httputil.DumpResponse(resp, true)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println("========Delete Request: %s", string(dumpReq))
+		fmt.Println("========Delete Response: %s", string(dumpResp))
+		//p.SnapshotsService.connection.logFunc("<<<<<<Request:\n%sResponse:\n%s>>>>>>\n", string(dumpReq), string(dumpResp))
+	}
+	respBodyBytes, errReadBody := ioutil.ReadAll(resp.Body)
+	if errReadBody != nil {
+		return nil, errReadBody
+	}
+	if !Contains(resp.StatusCode, []int{200}) {
+		return nil, CheckFault(respBodyBytes, resp)
+	}
+	return new(SnapshotsServiceRemoveResponse), nil
+}
+
+func (p *SnapshotsServiceRemoveRequest) MustSend() *SnapshotsServiceRemoveResponse {
+	if v, err := p.Send(); err != nil {
+		panic(err)
+	} else {
+		return v
+	}
+}
+
+type SnapshotsServiceRemoveResponse struct {
+}
+
+func (p *SnapshotsService) Remove(id string) *SnapshotsServiceRemoveRequest {
+	return &SnapshotsServiceRemoveRequest{SnapshotsService: p, id: id}
+}
+
+//
 // Creates a virtual machine snapshot.
 // For example, to create a new snapshot for virtual machine `123` send a request like this:
 // [source]
